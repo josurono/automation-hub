@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automation Operations Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1f2e; }
+    ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+    .nav-item { transition: all 0.2s; }
+    .nav-item:hover { background: #1e2535; }
+    .nav-item.active { background: #1e2535; border-left: 3px solid #f2c811; }
+    .card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 8px; }
+    .stat-card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 8px; transition: all 0.2s; }
+    .stat-card:hover { border-color: #f2c811; }
+    .badge-activo { background: #1a3a2a; color: #4ade80; border: 1px solid #166534; }
+    .badge-inactivo { background: #3a2a1a; color: #fb923c; border: 1px solid #7c2d12; }
+    .badge-archivado { background: #1e2535; color: #94a3b8; border: 1px solid #334155; }
+    .badge-exito { background: #1a3a2a; color: #4ade80; }
+    .badge-fallo { background: #3a1a1a; color: #f87171; }
+    .btn-primary { background: #f2c811; color: #0a0d14; font-weight: 600; transition: all 0.2s; }
+    .btn-primary:hover { background: #e6bb00; }
+    .btn-secondary { background: #1e2535; color: #94a3b8; border: 1px solid #2d3748; transition: all 0.2s; }
+    .btn-secondary:hover { border-color: #f2c811; color: #f2c811; }
+    .workflow-row { transition: all 0.2s; border-left: 3px solid transparent; }
+    .workflow-row:hover { border-left-color: #f2c811; background: #1e2535; }
+    .riesgo-bajo { color: #4ade80; }
+    .riesgo-medio { color: #f2c811; }
+    .riesgo-alto { color: #fb923c; }
+    .riesgo-critico { color: #f87171; }
+  </style>
+</head>
+<body class="bg-[#0a0d14] text-white min-h-screen flex">
+
+  <!-- Sidebar -->
+  <aside class="w-56 bg-[#111827] border-r border-[#1e2535] flex flex-col fixed h-full z-10">
+    <!-- Logo -->
+    <div class="px-4 py-5 border-b border-[#1e2535]">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 bg-[#f2c811] rounded flex items-center justify-center">
+          <span class="text-black font-bold text-xs">AH</span>
+        </div>
+        <div>
+          <p class="text-white font-semibold text-sm leading-tight">Automation</p>
+          <p class="text-[#f2c811] text-xs leading-tight">Operations Hub</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 py-4 px-2">
+      <p class="text-[#4a5568] text-xs uppercase tracking-wider px-3 mb-2">Principal</p>
+      <button onclick="mostrarVista('dashboard')" id="nav-dashboard"
+        class="nav-item active w-full text-left px-3 py-2 rounded text-sm text-gray-300 flex items-center gap-2 mb-1">
+        <span class="text-[#f2c811]">▦</span> Dashboard
+      </button>
+      <button onclick="mostrarVista('workflows')" id="nav-workflows"
+        class="nav-item w-full text-left px-3 py-2 rounded text-sm text-gray-300 flex items-center gap-2 mb-1">
+        <span class="text-[#f2c811]">⚡</span> Workflows
+      </button>
+
+      <p class="text-[#4a5568] text-xs uppercase tracking-wider px-3 mb-2 mt-4">Sistema</p>
+      <button onclick="abrirModal()"
+        class="nav-item w-full text-left px-3 py-2 rounded text-sm text-gray-300 flex items-center gap-2">
+        <span class="text-[#f2c811]">+</span> Nuevo Workflow
+      </button>
+    </nav>
+
+    <!-- Footer -->
+    <div class="px-4 py-3 border-t border-[#1e2535]">
+      <p class="text-[#4a5568] text-xs">v0.1.0 — MVP</p>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="ml-56 flex-1 flex flex-col min-h-screen">
+
+    <!-- Top bar -->
+    <header class="bg-[#111827] border-b border-[#1e2535] px-6 py-3 flex justify-between items-center sticky top-0 z-10">
+      <div>
+        <h1 class="text-white font-semibold text-base" id="page-title">Dashboard</h1>
+        <p class="text-[#4a5568] text-xs" id="page-subtitle">Resumen general del sistema</p>
+      </div>
+      <button onclick="abrirModal()" class="btn-primary px-4 py-2 rounded text-sm">
+        + Nuevo Workflow
+      </button>
+    </header>
+
+    <!-- Content area -->
+    <div class="flex-1 p-6">
+
+      <!-- ===================== -->
+      <!-- VISTA: DASHBOARD      -->
+      <!-- ===================== -->
+      <div id="vista-dashboard">
+        <!-- Stats -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase tracking-wide">Total Workflows</p>
+            <p class="text-3xl font-bold text-white mt-1" id="stat-total">0</p>
+            <p class="text-[#4a5568] text-xs mt-2">registrados en el sistema</p>
+          </div>
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase tracking-wide">Activos</p>
+            <p class="text-3xl font-bold text-[#4ade80] mt-1" id="stat-activos">0</p>
+            <p class="text-[#4a5568] text-xs mt-2">en operación</p>
+          </div>
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase tracking-wide">Ejecuciones</p>
+            <p class="text-3xl font-bold text-[#f2c811] mt-1" id="stat-ejecuciones">0</p>
+            <p class="text-[#4a5568] text-xs mt-2">total registradas</p>
+          </div>
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase tracking-wide">Tasa de Éxito</p>
+            <p class="text-3xl font-bold text-[#60a5fa] mt-1" id="stat-tasa">0%</p>
+            <p class="text-[#4a5568] text-xs mt-2">promedio global</p>
+          </div>
+        </div>
+
+        <!-- Workflows recientes -->
+        <div class="card">
+          <div class="px-5 py-4 border-b border-[#1e2535] flex justify-between items-center">
+            <h2 class="font-semibold text-sm text-white">Workflows Recientes</h2>
+            <button onclick="mostrarVista('workflows')" class="text-[#f2c811] text-xs hover:underline">
+              Ver todos →
+            </button>
+          </div>
+          <div id="dashboard-workflows" class="divide-y divide-[#1e2535]"></div>
+        </div>
+      </div>
+
+      <!-- ===================== -->
+      <!-- VISTA: WORKFLOWS      -->
+      <!-- ===================== -->
+      <div id="vista-workflows" class="hidden">
+        <div class="card">
+          <div class="px-5 py-4 border-b border-[#1e2535]">
+            <h2 class="font-semibold text-sm text-white">Todos los Workflows</h2>
+          </div>
+          <!-- Header tabla -->
+          <div class="grid grid-cols-12 gap-4 px-5 py-2 text-[#4a5568] text-xs uppercase tracking-wide border-b border-[#1e2535]">
+            <div class="col-span-4">Nombre</div>
+            <div class="col-span-3">Herramientas</div>
+            <div class="col-span-2">Estado</div>
+            <div class="col-span-2">Modificado</div>
+            <div class="col-span-1"></div>
+          </div>
+          <div id="workflows-tabla" class="divide-y divide-[#1e2535]"></div>
+        </div>
+      </div>
+
+      <!-- ===================== -->
+      <!-- VISTA: DETALLE        -->
+      <!-- ===================== -->
+      <div id="vista-detalle" class="hidden">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 mb-5">
+          <button onclick="volverALista()" class="text-[#4a5568] hover:text-[#f2c811] text-sm transition-colors">
+            Workflows
+          </button>
+          <span class="text-[#2d3748]">/</span>
+          <span class="text-white text-sm" id="detalle-breadcrumb"></span>
+        </div>
+
+        <!-- Header detalle -->
+        <div class="card p-5 mb-5">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-xl font-bold text-white" id="detalle-nombre"></h2>
+              <p class="text-[#4a5568] text-sm mt-1" id="detalle-descripcion"></p>
+            </div>
+            <span id="detalle-estado-badge" class="text-xs font-semibold uppercase px-3 py-1 rounded-full"></span>
+          </div>
+          <div class="flex gap-2 mt-4 flex-wrap" id="detalle-herramientas"></div>
+        </div>
+
+        <!-- Stats detalle -->
+        <div class="grid grid-cols-4 gap-4 mb-5">
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase">Total Ejecuciones</p>
+            <p class="text-2xl font-bold text-white mt-1" id="d-stat-total">0</p>
+          </div>
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase">Exitosas</p>
+            <p class="text-2xl font-bold text-[#4ade80] mt-1" id="d-stat-exito">0</p>
+          </div>
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase">Fallidas</p>
+            <p class="text-2xl font-bold text-[#f87171] mt-1" id="d-stat-fallo">0</p>
+          </div>
+          <div class="stat-card p-4">
+            <p class="text-[#4a5568] text-xs uppercase">Tasa de Éxito</p>
+            <p class="text-2xl font-bold text-[#f2c811] mt-1" id="d-stat-tasa">0%</p>
+          </div>
+        </div>
+
+        <!-- Gráfica -->
+        <div class="card p-5 mb-5">
+          <h3 class="text-sm font-semibold text-white mb-4">Ejecuciones — Últimos 7 días</h3>
+          <canvas id="grafica-ejecuciones" height="80"></canvas>
+        </div>
+
+        <!-- Botones IA -->
+        <div class="flex gap-3 mb-5">
+          <button onclick="generarReadme()"
+            class="btn-primary px-4 py-2 rounded text-sm flex items-center gap-2">
+            ⚡ Generar README
+          </button>
+          <button onclick="analizarRiesgos()"
+            class="btn-secondary px-4 py-2 rounded text-sm flex items-center gap-2">
+            🔍 Analizar Riesgos
+          </button>
+        </div>
+
+        <!-- Resultado IA -->
+        <div id="resultado-ia" class="hidden card mb-5">
+          <div class="px-5 py-3 border-b border-[#1e2535] flex justify-between items-center">
+            <h3 class="text-sm font-semibold text-white" id="resultado-ia-titulo"></h3>
+            <button onclick="copiarResultado()" class="text-[#f2c811] text-xs hover:underline">
+              Copiar
+            </button>
+          </div>
+          <div class="p-5">
+            <pre id="resultado-ia-contenido" class="text-sm text-[#94a3b8] whitespace-pre-wrap font-mono leading-relaxed"></pre>
+          </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="card">
+          <div class="px-5 py-4 border-b border-[#1e2535]">
+            <h3 class="text-sm font-semibold text-white">Historial de Ejecuciones</h3>
+          </div>
+          <div class="grid grid-cols-12 gap-4 px-5 py-2 text-[#4a5568] text-xs uppercase tracking-wide border-b border-[#1e2535]">
+            <div class="col-span-2">Estado</div>
+            <div class="col-span-5">Fecha y hora</div>
+            <div class="col-span-3">Duración</div>
+            <div class="col-span-2">Error</div>
+          </div>
+          <div id="ejecuciones-lista" class="divide-y divide-[#1e2535]"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+    <div class="bg-[#111827] rounded-lg w-full max-w-md border border-[#1e2535] shadow-2xl">
+      <div class="px-6 py-4 border-b border-[#1e2535] flex justify-between items-center">
+        <h2 class="font-semibold text-white">Nuevo Workflow</h2>
+        <button onclick="cerrarModal()" class="text-[#4a5568] hover:text-white text-lg">×</button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="text-xs text-[#4a5568] uppercase tracking-wide">Nombre *</label>
+          <input id="input-nombre" type="text" placeholder="Ej: Procesamiento de Facturas"
+            class="w-full mt-1 bg-[#0a0d14] border border-[#2d3748] rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#f2c811] transition-colors">
+        </div>
+        <div>
+          <label class="text-xs text-[#4a5568] uppercase tracking-wide">Descripción</label>
+          <textarea id="input-descripcion" placeholder="¿Qué hace este workflow?"
+            class="w-full mt-1 bg-[#0a0d14] border border-[#2d3748] rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#f2c811] transition-colors h-20 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="text-xs text-[#4a5568] uppercase tracking-wide">Herramientas (separadas por coma)</label>
+          <input id="input-herramientas" type="text" placeholder="Ej: Make, OpenAI, Google Sheets"
+            class="w-full mt-1 bg-[#0a0d14] border border-[#2d3748] rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#f2c811] transition-colors">
+        </div>
+      </div>
+      <div class="px-6 pb-6 flex gap-3">
+        <button onclick="cerrarModal()" class="btn-secondary flex-1 py-2 rounded text-sm">Cancelar</button>
+        <button onclick="crearWorkflow()" class="btn-primary flex-1 py-2 rounded text-sm">Crear Workflow</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' })
+
+    let workflowActual = null
+    let graficaInstance = null
+    let vistaActual = 'dashboard'
+
+    // ==================
+    // NAVEGACIÓN
+    // ==================
+
+    function mostrarVista(vista) {
+      document.getElementById('vista-dashboard').classList.add('hidden')
+      document.getElementById('vista-workflows').classList.add('hidden')
+      document.getElementById('vista-detalle').classList.add('hidden')
+
+      document.getElementById('nav-dashboard')?.classList.remove('active')
+      document.getElementById('nav-workflows')?.classList.remove('active')
+
+      vistaActual = vista
+
+      if (vista === 'dashboard') {
+        document.getElementById('vista-dashboard').classList.remove('hidden')
+        document.getElementById('nav-dashboard').classList.add('active')
+        document.getElementById('page-title').textContent = 'Dashboard'
+        document.getElementById('page-subtitle').textContent = 'Resumen general del sistema'
+        cargarDashboard()
+      } else if (vista === 'workflows') {
+        document.getElementById('vista-workflows').classList.remove('hidden')
+        document.getElementById('nav-workflows').classList.add('active')
+        document.getElementById('page-title').textContent = 'Workflows'
+        document.getElementById('page-subtitle').textContent = 'Gestión de automatizaciones'
+        cargarTablaWorkflows()
+      }
+    }
+
+    // ==================
+    // DASHBOARD
+    // ==================
+
+    async function cargarDashboard() {
+      const res = await fetch('/api/workflows')
+      const workflows = await res.json()
+
+      const activos = workflows.filter(w => w.estado === 'activo')
+      document.getElementById('stat-total').textContent = workflows.length
+      document.getElementById('stat-activos').textContent = activos.length
+
+      let totalEjecuciones = 0
+      let totalExito = 0
+
+      for (const w of workflows) {
+        const resE = await fetch(`/api/workflows/${w.id}/ejecuciones`)
+        const ejecuciones = await resE.json()
+        totalEjecuciones += ejecuciones.length
+        totalExito += ejecuciones.filter(e => e.estado === 'exito').length
+      }
+
+      document.getElementById('stat-ejecuciones').textContent = totalEjecuciones
+      document.getElementById('stat-tasa').textContent = totalEjecuciones > 0
+        ? Math.round((totalExito / totalEjecuciones) * 100) + '%'
+        : '0%'
+
+      const container = document.getElementById('dashboard-workflows')
+      if (workflows.length === 0) {
+        container.innerHTML = '<p class="text-[#4a5568] text-center py-8 text-sm">No hay workflows registrados.</p>'
+        return
+      }
+
+      container.innerHTML = workflows.slice(0, 5).map(w => {
+        const herramientas = JSON.parse(w.herramientas || '[]')
+        const badgeClass = w.estado === 'activo' ? 'badge-activo' : w.estado === 'archivado' ? 'badge-archivado' : 'badge-inactivo'
+        return `
+          <div class="workflow-row grid grid-cols-12 gap-4 px-5 py-3 cursor-pointer items-center"
+               onclick="abrirDetalle('${w.id}')">
+            <div class="col-span-4">
+              <p class="text-white text-sm font-medium">${w.nombre}</p>
+              <p class="text-[#4a5568] text-xs mt-0.5">${w.descripcion || 'Sin descripción'}</p>
+            </div>
+            <div class="col-span-4 flex gap-1 flex-wrap">
+              ${herramientas.slice(0, 3).map(h => `<span class="bg-[#1e2535] text-[#94a3b8] text-xs px-2 py-0.5 rounded">${h}</span>`).join('')}
+              ${herramientas.length > 3 ? `<span class="text-[#4a5568] text-xs py-0.5">+${herramientas.length - 3}</span>` : ''}
+            </div>
+            <div class="col-span-2">
+              <span class="text-xs px-2 py-1 rounded-full font-medium ${badgeClass}">${w.estado}</span>
+            </div>
+            <div class="col-span-2 text-[#4a5568] text-xs">
+              ${new Date(w.fecha_modificacion).toLocaleDateString('es-ES')}
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    // ==================
+    // TABLA WORKFLOWS
+    // ==================
+
+    async function cargarTablaWorkflows() {
+      const res = await fetch('/api/workflows')
+      const workflows = await res.json()
+
+      const container = document.getElementById('workflows-tabla')
+      if (workflows.length === 0) {
+        container.innerHTML = '<p class="text-[#4a5568] text-center py-8 text-sm">No hay workflows registrados.</p>'
+        return
+      }
+
+      container.innerHTML = workflows.map(w => {
+        const herramientas = JSON.parse(w.herramientas || '[]')
+        const badgeClass = w.estado === 'activo' ? 'badge-activo' : w.estado === 'archivado' ? 'badge-archivado' : 'badge-inactivo'
+        return `
+          <div class="workflow-row grid grid-cols-12 gap-4 px-5 py-3 cursor-pointer items-center"
+               onclick="abrirDetalle('${w.id}')">
+            <div class="col-span-4">
+              <p class="text-white text-sm font-medium">${w.nombre}</p>
+              <p class="text-[#4a5568] text-xs mt-0.5">${w.descripcion || 'Sin descripción'}</p>
+            </div>
+            <div class="col-span-3 flex gap-1 flex-wrap">
+              ${herramientas.slice(0, 2).map(h => `<span class="bg-[#1e2535] text-[#94a3b8] text-xs px-2 py-0.5 rounded">${h}</span>`).join('')}
+              ${herramientas.length > 2 ? `<span class="text-[#4a5568] text-xs py-0.5">+${herramientas.length - 2}</span>` : ''}
+            </div>
+            <div class="col-span-2">
+              <span class="text-xs px-2 py-1 rounded-full font-medium ${badgeClass}">${w.estado}</span>
+            </div>
+            <div class="col-span-2 text-[#4a5568] text-xs">
+              ${new Date(w.fecha_modificacion).toLocaleDateString('es-ES')}
+            </div>
+            <div class="col-span-1 text-right">
+              <button onclick="event.stopPropagation(); archivarWorkflow('${w.id}')"
+                class="text-xs text-[#4a5568] hover:text-[#f87171] transition-colors">
+                Archivar
+              </button>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    // ==================
+    // DETALLE
+    // ==================
+
+    async function abrirDetalle(id) {
+      const res = await fetch(`/api/workflows/${id}`)
+      const workflow = await res.json()
+      workflowActual = workflow
+
+      const herramientas = JSON.parse(workflow.herramientas || '[]')
+
+      document.getElementById('detalle-nombre').textContent = workflow.nombre
+      document.getElementById('detalle-breadcrumb').textContent = workflow.nombre
+      document.getElementById('detalle-descripcion').textContent = workflow.descripcion || 'Sin descripción'
+
+      const badge = document.getElementById('detalle-estado-badge')
+      badge.textContent = workflow.estado
+      badge.className = `text-xs font-semibold uppercase px-3 py-1 rounded-full ${
+        workflow.estado === 'activo' ? 'badge-activo' : 'badge-archivado'
+      }`
+
+      document.getElementById('detalle-herramientas').innerHTML =
+        herramientas.map(h => `<span class="bg-[#1e2535] text-[#94a3b8] text-xs px-2 py-1 rounded">${h}</span>`).join('')
+
+      document.getElementById('resultado-ia').classList.add('hidden')
+
+      await cargarEjecuciones(id)
+
+      document.getElementById('vista-dashboard').classList.add('hidden')
+      document.getElementById('vista-workflows').classList.add('hidden')
+      document.getElementById('vista-detalle').classList.remove('hidden')
+
+      document.getElementById('page-title').textContent = workflow.nombre
+      document.getElementById('page-subtitle').textContent = 'Detalle del workflow'
+    }
+
+    async function cargarEjecuciones(workflowId) {
+      const res = await fetch(`/api/workflows/${workflowId}/ejecuciones`)
+      const ejecuciones = await res.json()
+
+      const total = ejecuciones.length
+      const exito = ejecuciones.filter(e => e.estado === 'exito').length
+      const fallo = ejecuciones.filter(e => e.estado === 'fallo').length
+      const tasa = total > 0 ? Math.round((exito / total) * 100) : 0
+
+      document.getElementById('d-stat-total').textContent = total
+      document.getElementById('d-stat-exito').textContent = exito
+      document.getElementById('d-stat-fallo').textContent = fallo
+      document.getElementById('d-stat-tasa').textContent = tasa + '%'
+
+      generarGrafica(ejecuciones)
+
+      const lista = document.getElementById('ejecuciones-lista')
+      if (ejecuciones.length === 0) {
+        lista.innerHTML = '<p class="text-[#4a5568] text-center py-8 text-sm">Sin ejecuciones registradas.</p>'
+        return
+      }
+
+      lista.innerHTML = ejecuciones.map(e => {
+        const badgeClass = e.estado === 'exito' ? 'badge-exito' : 'badge-fallo'
+        const duracion = e.duracion_ms ? `${e.duracion_ms}ms` : '—'
+        return `
+          <div class="grid grid-cols-12 gap-4 px-5 py-3 items-center hover:bg-[#1e2535] transition-colors">
+            <div class="col-span-2">
+              <span class="text-xs px-2 py-1 rounded font-medium ${badgeClass}">${e.estado}</span>
+            </div>
+            <div class="col-span-5 text-[#94a3b8] text-sm">
+              ${new Date(e.timestamp).toLocaleString('es-ES')}
+            </div>
+            <div class="col-span-3 text-[#4a5568] text-sm">${duracion}</div>
+            <div class="col-span-2 text-[#f87171] text-xs truncate">${e.mensaje_error || ''}</div>
+          </div>
+        `
+      }).join('')
+    }
+
+    function generarGrafica(ejecuciones) {
+      const ultimos7 = []
+      for (let i = 6; i >= 0; i--) {
+        const fecha = new Date()
+        fecha.setDate(fecha.getDate() - i)
+        ultimos7.push(fecha.toISOString().split('T')[0])
+      }
+
+      const exitosPorDia = ultimos7.map(dia =>
+        ejecuciones.filter(e => e.estado === 'exito' && e.timestamp.startsWith(dia)).length
+      )
+      const fallosPorDia = ultimos7.map(dia =>
+        ejecuciones.filter(e => e.estado === 'fallo' && e.timestamp.startsWith(dia)).length
+      )
+
+      const labels = ultimos7.map(d => {
+        const fecha = new Date(d + 'T12:00:00')
+        return fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })
+      })
+
+      if (graficaInstance) graficaInstance.destroy()
+
+      const ctx = document.getElementById('grafica-ejecuciones').getContext('2d')
+      graficaInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Exitosas',
+              data: exitosPorDia,
+              backgroundColor: '#166534',
+              borderColor: '#4ade80',
+              borderWidth: 1,
+              borderRadius: 3
+            },
+            {
+              label: 'Fallidas',
+              data: fallosPorDia,
+              backgroundColor: '#7f1d1d',
+              borderColor: '#f87171',
+              borderWidth: 1,
+              borderRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { size: 11 } }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#4a5568', font: { size: 11 } },
+              grid: { color: '#1e2535' }
+            },
+            y: {
+              ticks: { color: '#4a5568', font: { size: 11 }, stepSize: 1 },
+              grid: { color: '#1e2535' },
+              beginAtZero: true
+            }
+          }
+        }
+      })
+    }
+
+    function volverALista() {
+      workflowActual = null
+      mostrarVista(vistaActual === 'detalle' ? 'workflows' : vistaActual)
+      mostrarVista('workflows')
+    }
+
+    // ==================
+    // MODAL
+    // ==================
+
+    function abrirModal() {
+      document.getElementById('modal').classList.remove('hidden')
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal').classList.add('hidden')
+      document.getElementById('input-nombre').value = ''
+      document.getElementById('input-descripcion').value = ''
+      document.getElementById('input-herramientas').value = ''
+    }
+
+    async function crearWorkflow() {
+      const nombre = document.getElementById('input-nombre').value.trim()
+      const descripcion = document.getElementById('input-descripcion').value.trim()
+      const herramientasRaw = document.getElementById('input-herramientas').value.trim()
+      const herramientas = herramientasRaw ? herramientasRaw.split(',').map(h => h.trim()) : []
+
+      if (!nombre) { alert('El nombre es obligatorio'); return }
+
+      await fetch('/api/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, descripcion, herramientas })
+      })
+
+      cerrarModal()
+      mostrarVista('workflows')
+    }
+
+    async function archivarWorkflow(id) {
+      if (!confirm('¿Archivar este workflow?')) return
+      await fetch(`/api/workflows/${id}`, { method: 'DELETE' })
+      cargarTablaWorkflows()
+    }
+
+    // ==================
+    // IA
+    // ==================
+
+    async function generarReadme() {
+      const btn = event.target
+      btn.textContent = 'Generando...'
+      btn.disabled = true
+
+      try {
+        const res = await fetch(`/api/workflows/${workflowActual.id}/generar-readme`, { method: 'POST' })
+        const data = await res.json()
+        document.getElementById('resultado-ia-titulo').textContent = 'README.md generado'
+        document.getElementById('resultado-ia-contenido').textContent = data.readme
+        document.getElementById('resultado-ia').classList.remove('hidden')
+      } catch (e) {
+        alert('Error generando README')
+      } finally {
+        btn.textContent = '⚡ Generar README'
+        btn.disabled = false
+      }
+    }
+
+    async function analizarRiesgos() {
+      const btn = event.target
+      btn.textContent = 'Analizando...'
+      btn.disabled = true
+
+      try {
+        const res = await fetch(`/api/workflows/${workflowActual.id}/analizar`, { method: 'POST' })
+        const data = await res.json()
+        const a = data.analisis
+
+        const nivelClass = `riesgo-${a.nivel_riesgo}`
+        const contenido = `NIVEL DE RIESGO: ${a.nivel_riesgo.toUpperCase()}\n\nRESUMEN:\n${a.resumen}\n\nPUNTOS DE FALLO:\n${a.puntos_fallo.map(p => `• ${p}`).join('\n')}\n\nRECOMENDACIONES:\n${a.recomendaciones.map(r => `• ${r}`).join('\n')}`
+
+        document.getElementById('resultado-ia-titulo').textContent = 'Análisis de Riesgos'
+        document.getElementById('resultado-ia-contenido').textContent = contenido
+        document.getElementById('resultado-ia-contenido').className = `text-sm whitespace-pre-wrap font-mono leading-relaxed ${nivelClass}`
+        document.getElementById('resultado-ia').classList.remove('hidden')
+      } catch (e) {
+        alert('Error analizando workflow')
+      } finally {
+        btn.textContent = '🔍 Analizar Riesgos'
+        btn.disabled = false
+      }
+    }
+
+    function copiarResultado() {
+      navigator.clipboard.writeText(document.getElementById('resultado-ia-contenido').textContent)
+      alert('Copiado al portapapeles')
+    }
+
+    // Iniciar
+    cargarDashboard()
+  </script>
+
+</body>
+</html>
