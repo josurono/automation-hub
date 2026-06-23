@@ -20,7 +20,8 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
-    "openai": "^6.44.0"
+    "openai": "^6.44.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "electron": "^42.4.1"

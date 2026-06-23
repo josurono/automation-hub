@@ -9,8 +9,6 @@ const { requireAuth } = require('./src/middleware/auth')
 const app = express()
 const PORT = process.env.PORT || 3000
 
-initializeDatabase()
-
 app.set('trust proxy', 1)
 app.use(helmet({ contentSecurityPolicy: false }))
 app.use(cors())
@@ -29,6 +27,11 @@ app.get('/api', requireAuth, (req, res) => {
   res.json({ aplicacion: 'FlowVault', version: '0.2.0', estado: 'online' })
 })
 
-app.listen(PORT, () => {
-  console.log(`FlowVault running on http://localhost:${PORT}`)
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`FlowVault running on http://localhost:${PORT}`)
+  })
+}).catch(err => {
+  console.error('Error inicializando la base de datos:', err)
+  process.exit(1)
 })

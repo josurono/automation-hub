@@ -3,21 +3,28 @@ const router = express.Router()
 const { db } = require('../database')
 const { randomUUID } = require('crypto')
 
-// GET /api/workflows - Listar todos
-router.get('/', (req, res) => {
-  const workflows = db.prepare('SELECT * FROM workflows ORDER BY fecha_modificacion DESC').all()
-  res.json(workflows)
+router.get('/', async (req, res) => {
+  try {
+    const workflows = await db.all('SELECT * FROM workflows ORDER BY fecha_modificacion DESC')
+    res.json(workflows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
 })
 
-// GET /api/workflows/:id - Obtener uno
-router.get('/:id', (req, res) => {
-  const workflow = db.prepare('SELECT * FROM workflows WHERE id = ?').get(req.params.id)
-  if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
-  res.json(workflow)
+router.get('/:id', async (req, res) => {
+  try {
+    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
+    if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
+    res.json(workflow)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
 })
 
-// POST /api/workflows - Crear nuevo
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { nombre, descripcion, herramientas } = req.body
   if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' })
   if (typeof nombre !== 'string' || nombre.trim().length === 0) return res.status(400).json({ error: 'El nombre no puede estar vacío' })
@@ -25,20 +32,25 @@ router.post('/', (req, res) => {
   if (descripcion && descripcion.length > 500) return res.status(400).json({ error: 'La descripción no puede superar los 500 caracteres' })
   if (herramientas && (!Array.isArray(herramientas) || herramientas.length > 50)) return res.status(400).json({ error: 'Herramientas debe ser un array de máximo 50 elementos' })
 
-  const ahora = new Date().toISOString()
-  const id = randomUUID()
+  try {
+    const ahora = new Date().toISOString()
+    const id = randomUUID()
 
-  db.prepare(`
-    INSERT INTO workflows (id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion)
-    VALUES (?, ?, ?, 'activo', ?, ?, ?)
-  `).run(id, nombre, descripcion || '', JSON.stringify(herramientas || []), ahora, ahora)
+    await db.run(
+      `INSERT INTO workflows (id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion)
+       VALUES (?, ?, ?, 'activo', ?, ?, ?)`,
+      [id, nombre, descripcion || '', JSON.stringify(herramientas || []), ahora, ahora]
+    )
 
-  const workflow = db.prepare('SELECT * FROM workflows WHERE id = ?').get(id)
-  res.status(201).json(workflow)
+    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [id])
+    res.status(201).json(workflow)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
 })
 
-// PATCH /api/workflows/:id - Editar
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   const { nombre, descripcion, herramientas, estado } = req.body
   if (nombre !== undefined && (typeof nombre !== 'string' || nombre.trim().length === 0)) return res.status(400).json({ error: 'El nombre no puede estar vacío' })
   if (nombre && nombre.length > 100) return res.status(400).json({ error: 'El nombre no puede superar los 100 caracteres' })
@@ -46,79 +58,92 @@ router.patch('/:id', (req, res) => {
   if (herramientas && (!Array.isArray(herramientas) || herramientas.length > 50)) return res.status(400).json({ error: 'Herramientas debe ser un array de máximo 50 elementos' })
   const ESTADOS_VALIDOS = ['activo', 'pausado', 'archivado']
   if (estado && !ESTADOS_VALIDOS.includes(estado)) return res.status(400).json({ error: `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}` })
-  const ahora = new Date().toISOString()
 
-  db.prepare(`
-    UPDATE workflows 
-    SET nombre = COALESCE(?, nombre),
-        descripcion = COALESCE(?, descripcion),
-        herramientas = COALESCE(?, herramientas),
-        estado = COALESCE(?, estado),
-        fecha_modificacion = ?
-    WHERE id = ?
-  `).run(nombre, descripcion, herramientas ? JSON.stringify(herramientas) : null, estado, ahora, req.params.id)
+  try {
+    const ahora = new Date().toISOString()
 
-  const workflow = db.prepare('SELECT * FROM workflows WHERE id = ?').get(req.params.id)
-  res.json(workflow)
+    await db.run(
+      `UPDATE workflows
+       SET nombre = COALESCE(?, nombre),
+           descripcion = COALESCE(?, descripcion),
+           herramientas = COALESCE(?, herramientas),
+           estado = COALESCE(?, estado),
+           fecha_modificacion = ?
+       WHERE id = ?`,
+      [nombre, descripcion, herramientas ? JSON.stringify(herramientas) : null, estado, ahora, req.params.id]
+    )
+
+    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
+    res.json(workflow)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
 })
 
-// DELETE /api/workflows/:id - Archivar
-router.delete('/:id', (req, res) => {
-  db.prepare(`
-    UPDATE workflows SET estado = 'archivado', fecha_modificacion = ? WHERE id = ?
-  `).run(new Date().toISOString(), req.params.id)
+router.delete('/:id', async (req, res) => {
+  try {
+    await db.run(
+      `UPDATE workflows SET estado = 'archivado', fecha_modificacion = ? WHERE id = ?`,
+      [new Date().toISOString(), req.params.id]
+    )
+    res.json({ mensaje: 'Workflow archivado correctamente' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+})
 
-  res.json({ mensaje: 'Workflow archivado correctamente' })
+router.get('/:id/ejecuciones', async (req, res) => {
+  try {
+    const ejecuciones = await db.all(
+      `SELECT * FROM ejecuciones WHERE workflow_id = ? ORDER BY timestamp DESC LIMIT 50`,
+      [req.params.id]
+    )
+    res.json(ejecuciones)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
 })
-// GET /api/workflows/:id/ejecuciones - Ver historial
-router.get('/:id/ejecuciones', (req, res) => {
-  const ejecuciones = db.prepare(`
-    SELECT * FROM ejecuciones 
-    WHERE workflow_id = ? 
-    ORDER BY timestamp DESC 
-    LIMIT 50
-  `).all(req.params.id)
-  
-  res.json(ejecuciones)
-})
-// POST /api/workflows/:id/generar-readme
+
 router.post('/:id/generar-readme', async (req, res) => {
   try {
-    const workflow = db.prepare('SELECT * FROM workflows WHERE id = ?').get(req.params.id)
+    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
     if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
 
-    const ejecuciones = db.prepare('SELECT * FROM ejecuciones WHERE workflow_id = ?').all(req.params.id)
+    const ejecuciones = await db.all('SELECT * FROM ejecuciones WHERE workflow_id = ?', [req.params.id])
 
     const { generarReadme } = require('../ai')
     const readme = await generarReadme(workflow, ejecuciones)
 
-    db.prepare(`
-      INSERT INTO documentacion (id, workflow_id, tipo, contenido, timestamp)
-      VALUES (?, ?, 'readme', ?, ?)
-    `).run(require('crypto').randomUUID(), req.params.id, readme, new Date().toISOString())
+    await db.run(
+      `INSERT INTO documentacion (id, workflow_id, tipo, contenido, timestamp) VALUES (?, ?, 'readme', ?, ?)`,
+      [require('crypto').randomUUID(), req.params.id, readme, new Date().toISOString()]
+    )
 
     res.json({ readme })
-  } catch (error) {
-    console.error(error)
+  } catch (err) {
+    console.error(err)
     res.status(500).json({ error: 'Error generando README' })
   }
 })
 
-// POST /api/workflows/:id/analizar
 router.post('/:id/analizar', async (req, res) => {
   try {
-    const workflow = db.prepare('SELECT * FROM workflows WHERE id = ?').get(req.params.id)
+    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
     if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
 
-    const ejecuciones = db.prepare('SELECT * FROM ejecuciones WHERE workflow_id = ?').all(req.params.id)
+    const ejecuciones = await db.all('SELECT * FROM ejecuciones WHERE workflow_id = ?', [req.params.id])
 
     const { analizarRiesgos } = require('../ai')
     const analisis = await analizarRiesgos(workflow, ejecuciones)
 
     res.json({ analisis })
-  } catch (error) {
-    console.error(error)
+  } catch (err) {
+    console.error(err)
     res.status(500).json({ error: 'Error analizando workflow' })
   }
 })
+
 module.exports = router
