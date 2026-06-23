@@ -127,7 +127,7 @@ erDiagram
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/<tu-usuario>/automation-hub.git
+git clone https://github.com/josurono/automation-hub.git
 cd automation-hub
 
 # 2. Instalar dependencias
