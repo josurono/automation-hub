@@ -17,7 +17,7 @@ router.post('/execution', (req, res) => {
   }
 
   const id = randomUUID()
-  const timestamp = new Date().toISOString()
+  const timestamp = req.body.timestamp || new Date().toISOString()
 
   db.prepare(`
     INSERT INTO ejecuciones (id, workflow_id, timestamp, estado, duracion_ms, mensaje_error, payload_raw)
