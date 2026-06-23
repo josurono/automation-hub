@@ -6,9 +6,9 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
-**Plataforma SaaS para documentar, monitorear y gestionar automatizaciones empresariales.**
+**Centro de control para automatizadores: documenta tus workflows, monitorea su salud y genera documentación profesional con un clic.**
 
-FlowVault centraliza el ciclo de vida de los workflows de automatización: registra cada proceso, captura sus ejecuciones en tiempo real via webhooks, genera documentación técnica con IA y expone métricas de rendimiento en un dashboard unificado.
+FlowVault nació de un problema real: gestionar múltiples automatizaciones sin documentación, sin visibilidad de fallos y sin forma de explicarle a un cliente qué hace cada proceso. Esta herramienta resuelve exactamente eso.
 
 **[Ver demo en producción →](https://automation-hub-production-7a87.up.railway.app)**
 
