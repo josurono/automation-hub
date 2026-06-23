@@ -20,6 +20,10 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const { nombre, descripcion, herramientas } = req.body
   if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' })
+  if (typeof nombre !== 'string' || nombre.trim().length === 0) return res.status(400).json({ error: 'El nombre no puede estar vacío' })
+  if (nombre.length > 100) return res.status(400).json({ error: 'El nombre no puede superar los 100 caracteres' })
+  if (descripcion && descripcion.length > 500) return res.status(400).json({ error: 'La descripción no puede superar los 500 caracteres' })
+  if (herramientas && (!Array.isArray(herramientas) || herramientas.length > 50)) return res.status(400).json({ error: 'Herramientas debe ser un array de máximo 50 elementos' })
 
   const ahora = new Date().toISOString()
   const id = randomUUID()
@@ -36,6 +40,12 @@ router.post('/', (req, res) => {
 // PATCH /api/workflows/:id - Editar
 router.patch('/:id', (req, res) => {
   const { nombre, descripcion, herramientas, estado } = req.body
+  if (nombre !== undefined && (typeof nombre !== 'string' || nombre.trim().length === 0)) return res.status(400).json({ error: 'El nombre no puede estar vacío' })
+  if (nombre && nombre.length > 100) return res.status(400).json({ error: 'El nombre no puede superar los 100 caracteres' })
+  if (descripcion && descripcion.length > 500) return res.status(400).json({ error: 'La descripción no puede superar los 500 caracteres' })
+  if (herramientas && (!Array.isArray(herramientas) || herramientas.length > 50)) return res.status(400).json({ error: 'Herramientas debe ser un array de máximo 50 elementos' })
+  const ESTADOS_VALIDOS = ['activo', 'pausado', 'archivado']
+  if (estado && !ESTADOS_VALIDOS.includes(estado)) return res.status(400).json({ error: `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}` })
   const ahora = new Date().toISOString()
 
   db.prepare(`

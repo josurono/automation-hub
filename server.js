@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
 const path = require('path')
 const { initializeDatabase } = require('./src/database')
 const { requireAuth } = require('./src/middleware/auth')
@@ -10,6 +11,7 @@ const PORT = process.env.PORT || 3000
 
 initializeDatabase()
 
+app.use(helmet({ contentSecurityPolicy: false }))
 app.use(cors())
 app.use(express.json())
 app.use(express.static(path.join(__dirname, 'public')))
