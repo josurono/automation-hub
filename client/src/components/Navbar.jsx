@@ -1,0 +1,90 @@
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+
+const IconDashboard = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+    <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+  </svg>
+)
+const IconWorkflows = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+  </svg>
+)
+const IconLogout = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+)
+
+export default function Navbar() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
+
+  return (
+    <aside style={{
+      width: 220, minWidth: 220, background: 'var(--surface)',
+      borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
+      position: 'fixed', height: '100vh', top: 0, left: 0, zIndex: 20,
+    }}>
+      <div style={{ padding: '16px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 28, height: 28, background: 'var(--accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>FV</div>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>FlowVault</span>
+      </div>
+
+      <nav style={{ flex: 1, padding: '10px 8px', overflowY: 'auto' }}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-3)', padding: '0 8px', marginBottom: 4 }}>Principal</div>
+          <NavLink to="/dashboard" style={navStyle}>
+            {({ isActive }) => (
+              <span style={navItemStyle(isActive)}>
+                <IconDashboard /> Dashboard
+              </span>
+            )}
+          </NavLink>
+          <NavLink to="/workflows" style={navStyle}>
+            {({ isActive }) => (
+              <span style={navItemStyle(isActive)}>
+                <IconWorkflows /> Workflows
+              </span>
+            )}
+          </NavLink>
+        </div>
+      </nav>
+
+      <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6 }}>
+          <div style={{ width: 24, height: 24, background: 'var(--accent-dim)', border: '1px solid var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, color: 'var(--accent)', flexShrink: 0 }}>
+            {user ? user[0].toUpperCase() : 'A'}
+          </div>
+          <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-2)' }}>{user || 'admin'}</span>
+          <button onClick={handleLogout} title="Cerrar sesión" style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}>
+            <IconLogout />
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+function navStyle() {
+  return { textDecoration: 'none', display: 'block', marginBottom: 1 }
+}
+
+function navItemStyle(isActive) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6,
+    color: isActive ? 'var(--accent)' : 'var(--text-2)',
+    background: isActive ? 'var(--accent-dim)' : 'transparent',
+    fontSize: 13, cursor: 'pointer', width: '100%',
+  }
+}
