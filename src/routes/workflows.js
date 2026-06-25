@@ -1,11 +1,11 @@
 const express = require('express')
 const router = express.Router()
-const { db } = require('../database')
 const { randomUUID } = require('crypto')
+const store = require('../data/store')
 
 router.get('/', async (req, res) => {
   try {
-    const workflows = await db.all('SELECT * FROM workflows ORDER BY fecha_modificacion DESC')
+    const workflows = await store.workflows.list(req.user.organization_id)
     res.json(workflows)
   } catch (err) {
     console.error(err)
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
+    const workflow = await store.workflows.get(req.user.organization_id, req.params.id)
     if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
     res.json(workflow)
   } catch (err) {
@@ -36,13 +36,16 @@ router.post('/', async (req, res) => {
     const ahora = new Date().toISOString()
     const id = randomUUID()
 
-    await db.run(
-      `INSERT INTO workflows (id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion)
-       VALUES (?, ?, ?, 'activo', ?, ?, ?)`,
-      [id, nombre, descripcion || '', JSON.stringify(herramientas || []), ahora, ahora]
-    )
+    // organization_id se toma SIEMPRE del JWT, nunca del body.
+    await store.workflows.create(req.user.organization_id, {
+      id,
+      nombre,
+      descripcion: descripcion || '',
+      herramientas: JSON.stringify(herramientas || []),
+      fecha: ahora,
+    })
 
-    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [id])
+    const workflow = await store.workflows.get(req.user.organization_id, id)
     res.status(201).json(workflow)
   } catch (err) {
     console.error(err)
@@ -60,20 +63,22 @@ router.patch('/:id', async (req, res) => {
   if (estado && !ESTADOS_VALIDOS.includes(estado)) return res.status(400).json({ error: `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}` })
 
   try {
+    const orgId = req.user.organization_id
+
+    // Si no existe en MI organización → 404 (no revelamos si existe en otra).
+    const existing = await store.workflows.get(orgId, req.params.id)
+    if (!existing) return res.status(404).json({ error: 'Workflow no encontrado' })
+
     const ahora = new Date().toISOString()
+    await store.workflows.update(orgId, req.params.id, {
+      nombre,
+      descripcion,
+      herramientas: herramientas ? JSON.stringify(herramientas) : null,
+      estado,
+      fecha: ahora,
+    })
 
-    await db.run(
-      `UPDATE workflows
-       SET nombre = COALESCE(?, nombre),
-           descripcion = COALESCE(?, descripcion),
-           herramientas = COALESCE(?, herramientas),
-           estado = COALESCE(?, estado),
-           fecha_modificacion = ?
-       WHERE id = ?`,
-      [nombre, descripcion, herramientas ? JSON.stringify(herramientas) : null, estado, ahora, req.params.id]
-    )
-
-    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
+    const workflow = await store.workflows.get(orgId, req.params.id)
     res.json(workflow)
   } catch (err) {
     console.error(err)
@@ -83,10 +88,12 @@ router.patch('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await db.run(
-      `UPDATE workflows SET estado = 'archivado', fecha_modificacion = ? WHERE id = ?`,
-      [new Date().toISOString(), req.params.id]
-    )
+    const orgId = req.user.organization_id
+
+    const existing = await store.workflows.get(orgId, req.params.id)
+    if (!existing) return res.status(404).json({ error: 'Workflow no encontrado' })
+
+    await store.workflows.archive(orgId, req.params.id, new Date().toISOString())
     res.json({ mensaje: 'Workflow archivado correctamente' })
   } catch (err) {
     console.error(err)
@@ -96,10 +103,13 @@ router.delete('/:id', async (req, res) => {
 
 router.get('/:id/ejecuciones', async (req, res) => {
   try {
-    const ejecuciones = await db.all(
-      `SELECT * FROM ejecuciones WHERE workflow_id = ? ORDER BY timestamp DESC LIMIT 50`,
-      [req.params.id]
-    )
+    const orgId = req.user.organization_id
+
+    // El workflow debe pertenecer a mi org; si no, 404 (no exponemos sus ejecuciones).
+    const workflow = await store.workflows.get(orgId, req.params.id)
+    if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
+
+    const ejecuciones = await store.ejecuciones.listByWorkflow(orgId, req.params.id)
     res.json(ejecuciones)
   } catch (err) {
     console.error(err)
@@ -109,18 +119,24 @@ router.get('/:id/ejecuciones', async (req, res) => {
 
 router.post('/:id/generar-readme', async (req, res) => {
   try {
-    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
+    const orgId = req.user.organization_id
+
+    const workflow = await store.workflows.get(orgId, req.params.id)
     if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
 
-    const ejecuciones = await db.all('SELECT * FROM ejecuciones WHERE workflow_id = ?', [req.params.id])
+    const ejecuciones = await store.ejecuciones.allByWorkflow(orgId, req.params.id)
 
     const { generarReadme } = require('../ai')
     const readme = await generarReadme(workflow, ejecuciones)
 
-    await db.run(
-      `INSERT INTO documentacion (id, workflow_id, tipo, contenido, timestamp) VALUES (?, ?, 'readme', ?, ?)`,
-      [require('crypto').randomUUID(), req.params.id, readme, new Date().toISOString()]
-    )
+    // documentacion estampada con la org del usuario (del JWT, no del body).
+    await store.documentacion.insert(orgId, {
+      id: randomUUID(),
+      workflow_id: req.params.id,
+      tipo: 'readme',
+      contenido: readme,
+      timestamp: new Date().toISOString(),
+    })
 
     res.json({ readme })
   } catch (err) {
@@ -131,10 +147,12 @@ router.post('/:id/generar-readme', async (req, res) => {
 
 router.post('/:id/analizar', async (req, res) => {
   try {
-    const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id])
+    const orgId = req.user.organization_id
+
+    const workflow = await store.workflows.get(orgId, req.params.id)
     if (!workflow) return res.status(404).json({ error: 'Workflow no encontrado' })
 
-    const ejecuciones = await db.all('SELECT * FROM ejecuciones WHERE workflow_id = ?', [req.params.id])
+    const ejecuciones = await store.ejecuciones.allByWorkflow(orgId, req.params.id)
 
     const { analizarRiesgos } = require('../ai')
     const analisis = await analizarRiesgos(workflow, ejecuciones)
