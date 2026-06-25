@@ -8,12 +8,12 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(stored || null)
   const [user, setUser] = useState(localStorage.getItem('flowvault_user') || null)
 
-  async function login(username, password) {
-    const res = await api.post('/api/auth/login', { username, password })
+  async function login(email, password) {
+    const res = await api.post('/api/auth/login', { email, password })
     localStorage.setItem('flowvault_token', res.data.token)
-    localStorage.setItem('flowvault_user', res.data.username)
+    localStorage.setItem('flowvault_user', res.data.email)
     setToken(res.data.token)
-    setUser(res.data.username)
+    setUser(res.data.email)
   }
 
   function logout() {

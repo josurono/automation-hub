@@ -5,18 +5,18 @@ import { useAuth } from '../context/AuthContext'
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleLogin(e) {
     e?.preventDefault()
-    if (!username.trim() || !password) return
+    if (!email.trim() || !password) return
     setError('')
     setLoading(true)
     try {
-      await login(username.trim(), password)
+      await login(email.trim(), password)
       navigate('/dashboard')
     } catch (err) {
       setError(err?.response?.data?.error || 'Error al iniciar sesión')
@@ -43,8 +43,8 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <div className="field">
-            <label>Usuario</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="admin" autoComplete="username" autoFocus />
+            <label>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" autoComplete="email" autoFocus />
           </div>
           <div className="field">
             <label>Contraseña</label>
