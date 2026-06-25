@@ -14,23 +14,34 @@ function requireOrg(orgId) {
   return orgId
 }
 
+// Columnas públicas del workflow: TODO menos webhook_token. El token es un
+// secreto y nunca viaja en list() ni get(); se sirve solo bajo demanda vía
+// webhookToken() (endpoint dedicado).
+const WORKFLOW_COLS = 'id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion, organization_id'
+
 const workflows = {
-  // El listado NO expone webhook_token (es un secreto): se enumeran las
-  // columnas explícitamente, omitiéndolo. El token solo se sirve en get() (detalle).
   list(orgId) {
     requireOrg(orgId)
     return db.all(
-      `SELECT id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion, organization_id
-       FROM workflows WHERE organization_id = ? ORDER BY fecha_modificacion DESC`,
+      `SELECT ${WORKFLOW_COLS} FROM workflows WHERE organization_id = ? ORDER BY fecha_modificacion DESC`,
       [orgId]
     )
   },
 
-  // Detalle: incluye webhook_token (SELECT *), que la UI usa en WorkflowDetailPage.
   get(orgId, id) {
     requireOrg(orgId)
     return db.get(
-      'SELECT * FROM workflows WHERE id = ? AND organization_id = ?',
+      `SELECT ${WORKFLOW_COLS} FROM workflows WHERE id = ? AND organization_id = ?`,
+      [id, orgId]
+    )
+  },
+
+  // Token bajo demanda, scopeado por org. Devuelve { webhook_token } o null
+  // (cross-org → null → el route responde 404, sin revelar que existe en otra org).
+  webhookToken(orgId, id) {
+    requireOrg(orgId)
+    return db.get(
+      'SELECT webhook_token FROM workflows WHERE id = ? AND organization_id = ?',
       [id, orgId]
     )
   },

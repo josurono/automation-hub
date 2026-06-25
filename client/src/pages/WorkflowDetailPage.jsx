@@ -48,11 +48,32 @@ const fieldLabel = {
   letterSpacing: '.06em', marginBottom: 6,
 }
 
-function WebhookCard({ workflow }) {
-  const [revealed, setRevealed] = useState(false)
+function useReducedMotion() {
+  const [reduce] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  )
+  return reduce
+}
+
+function Chevron({ open }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      style={{ transition: 'transform .2s ease', transform: open ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  )
+}
+
+function WebhookCard({ workflowId }) {
+  const [open, setOpen] = useState(false)
+  const [token, setToken] = useState(null)          // null = no está en memoria
+  const [loadingToken, setLoadingToken] = useState(false)
+  const [tokenError, setTokenError] = useState('')
   const [copied, setCopied] = useState('')
+  const reduceMotion = useReducedMotion()
   const url = `${window.location.origin}/api/webhooks/execution`
-  const token = workflow.webhook_token || ''
 
   function copy(text, what) {
     navigator.clipboard.writeText(text)
@@ -60,31 +81,73 @@ function WebhookCard({ workflow }) {
     setTimeout(() => setCopied(''), 1500)
   }
 
+  async function verToken() {
+    setLoadingToken(true)
+    setTokenError('')
+    try {
+      const res = await api.get(`/api/workflows/${workflowId}/webhook-token`)
+      setToken(res.data.webhook_token)
+    } catch {
+      setTokenError('No se pudo obtener el token')
+    } finally {
+      setLoadingToken(false)
+    }
+  }
+
+  function ocultarToken() {
+    setToken(null)        // se elimina de memoria
+    setTokenError('')
+  }
+
   return (
     <div className="panel" style={{ marginBottom: 16 }}>
-      <div className="panel-header">
+      <button className="webhook-disclosure" aria-expanded={open} onClick={() => setOpen(o => !o)}>
         <span className="panel-title">Webhook de ingesta</span>
-        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>POST · header X-Webhook-Token</span>
-      </div>
-      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <div style={fieldLabel}>URL</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <code style={codeBox}>{url}</code>
-            <button className="doc-btn" onClick={() => copy(url, 'url')}>{copied === 'url' ? 'Copiado' : 'Copiar'}</button>
-          </div>
-        </div>
-        <div>
-          <div style={fieldLabel}>
-            X-Webhook-Token <span style={{ textTransform: 'none', color: 'var(--warning)' }}>· secreto</span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <code style={codeBox}>{revealed ? token : '•'.repeat(48)}</code>
-            <button className="doc-btn" onClick={() => setRevealed(r => !r)}>{revealed ? 'Ocultar' : 'Ver'}</button>
-            <button className="doc-btn" onClick={() => copy(token, 'token')}>{copied === 'token' ? 'Copiado' : 'Copiar'}</button>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
-            Envíalo en el header <code style={{ fontSize: 11 }}>X-Webhook-Token</code> de cada POST desde Make.
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}>
+          {open ? 'Ocultar' : 'Mostrar detalles del webhook'}
+          <Chevron open={open} />
+        </span>
+      </button>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateRows: open ? '1fr' : '0fr',
+        transition: reduceMotion ? 'none' : 'grid-template-rows .25s ease',
+      }}>
+        <div style={{ overflow: 'hidden' }}>
+          <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* URL — no es secreta, se muestra de inmediato */}
+            <div>
+              <div style={fieldLabel}>URL</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <code style={codeBox}>{url}</code>
+                <button className="doc-btn" onClick={() => copy(url, 'url')}>{copied === 'url' ? 'Copiado' : 'Copiar'}</button>
+              </div>
+            </div>
+
+            {/* Token — bajo demanda: no viaja al frontend hasta pedirlo */}
+            <div>
+              <div style={fieldLabel}>
+                X-Webhook-Token <span style={{ textTransform: 'none', color: 'var(--warning)' }}>· secreto</span>
+              </div>
+              {token === null ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button className="doc-btn" onClick={verToken} disabled={loadingToken}>
+                    {loadingToken ? 'Cargando…' : 'Ver token'}
+                  </button>
+                  {tokenError && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{tokenError}</span>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <code style={codeBox}>{token}</code>
+                  <button className="doc-btn" onClick={() => copy(token, 'token')}>{copied === 'token' ? 'Copiado' : 'Copiar'}</button>
+                  <button className="doc-btn" onClick={ocultarToken}>Ocultar</button>
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
+                Envíalo en el header <code style={{ fontSize: 11 }}>X-Webhook-Token</code> de cada POST desde Make.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -177,7 +240,7 @@ export default function WorkflowDetailPage() {
 
         <AIPanel workflowId={id} />
 
-        <WebhookCard workflow={workflow} />
+        <WebhookCard workflowId={id} />
 
         <div className="panel">
           <div className="panel-header">

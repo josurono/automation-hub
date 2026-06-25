@@ -103,6 +103,17 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
+router.get('/:id/webhook-token', async (req, res) => {
+  try {
+    const row = await store.workflows.webhookToken(req.user.organization_id, req.params.id)
+    if (!row) return res.status(404).json({ error: 'Workflow no encontrado' })
+    res.json({ webhook_token: row.webhook_token })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Error interno del servidor' })
+  }
+})
+
 router.get('/:id/ejecuciones', async (req, res) => {
   try {
     const orgId = req.user.organization_id
