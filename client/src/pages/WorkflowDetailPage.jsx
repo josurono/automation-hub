@@ -38,6 +38,60 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
+const codeBox = {
+  flex: 1, fontFamily: "'SF Mono', Consolas, monospace", fontSize: 12, color: 'var(--text-2)',
+  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
+  padding: '7px 10px', overflowX: 'auto', whiteSpace: 'nowrap',
+}
+const fieldLabel = {
+  fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase',
+  letterSpacing: '.06em', marginBottom: 6,
+}
+
+function WebhookCard({ workflow }) {
+  const [revealed, setRevealed] = useState(false)
+  const [copied, setCopied] = useState('')
+  const url = `${window.location.origin}/api/webhooks/execution`
+  const token = workflow.webhook_token || ''
+
+  function copy(text, what) {
+    navigator.clipboard.writeText(text)
+    setCopied(what)
+    setTimeout(() => setCopied(''), 1500)
+  }
+
+  return (
+    <div className="panel" style={{ marginBottom: 16 }}>
+      <div className="panel-header">
+        <span className="panel-title">Webhook de ingesta</span>
+        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>POST · header X-Webhook-Token</span>
+      </div>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <div style={fieldLabel}>URL</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <code style={codeBox}>{url}</code>
+            <button className="doc-btn" onClick={() => copy(url, 'url')}>{copied === 'url' ? 'Copiado' : 'Copiar'}</button>
+          </div>
+        </div>
+        <div>
+          <div style={fieldLabel}>
+            X-Webhook-Token <span style={{ textTransform: 'none', color: 'var(--warning)' }}>· secreto</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <code style={codeBox}>{revealed ? token : '•'.repeat(48)}</code>
+            <button className="doc-btn" onClick={() => setRevealed(r => !r)}>{revealed ? 'Ocultar' : 'Ver'}</button>
+            <button className="doc-btn" onClick={() => copy(token, 'token')}>{copied === 'token' ? 'Copiado' : 'Copiar'}</button>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
+            Envíalo en el header <code style={{ fontSize: 11 }}>X-Webhook-Token</code> de cada POST desde Make.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function WorkflowDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -122,6 +176,8 @@ export default function WorkflowDetailPage() {
         </div>
 
         <AIPanel workflowId={id} />
+
+        <WebhookCard workflow={workflow} />
 
         <div className="panel">
           <div className="panel-header">

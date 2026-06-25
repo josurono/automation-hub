@@ -15,14 +15,18 @@ function requireOrg(orgId) {
 }
 
 const workflows = {
+  // El listado NO expone webhook_token (es un secreto): se enumeran las
+  // columnas explícitamente, omitiéndolo. El token solo se sirve en get() (detalle).
   list(orgId) {
     requireOrg(orgId)
     return db.all(
-      'SELECT * FROM workflows WHERE organization_id = ? ORDER BY fecha_modificacion DESC',
+      `SELECT id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion, organization_id
+       FROM workflows WHERE organization_id = ? ORDER BY fecha_modificacion DESC`,
       [orgId]
     )
   },
 
+  // Detalle: incluye webhook_token (SELECT *), que la UI usa en WorkflowDetailPage.
   get(orgId, id) {
     requireOrg(orgId)
     return db.get(
@@ -31,12 +35,12 @@ const workflows = {
     )
   },
 
-  create(orgId, { id, nombre, descripcion, herramientas, fecha }) {
+  create(orgId, { id, nombre, descripcion, herramientas, fecha, webhookToken }) {
     requireOrg(orgId)
     return db.run(
-      `INSERT INTO workflows (id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion, organization_id)
-       VALUES (?, ?, ?, 'activo', ?, ?, ?, ?)`,
-      [id, nombre, descripcion, herramientas, fecha, fecha, orgId]
+      `INSERT INTO workflows (id, nombre, descripcion, estado, herramientas, fecha_creacion, fecha_modificacion, organization_id, webhook_token)
+       VALUES (?, ?, ?, 'activo', ?, ?, ?, ?, ?)`,
+      [id, nombre, descripcion, herramientas, fecha, fecha, orgId, webhookToken]
     )
   },
 
@@ -64,10 +68,10 @@ const workflows = {
 
   // ÚNICA lectura intencionalmente SIN scope de org. El webhook público
   // (/api/webhooks/execution) no tiene JWT ni organización en el request, así
-  // que debe derivar la organización del propio workflow. Devuelve la fila
-  // { organization_id } o null si el workflow no existe.
-  organizationIdOf(workflowId) {
-    return db.get('SELECT organization_id FROM workflows WHERE id = ?', [workflowId])
+  // que debe derivar la organización del propio workflow y validar su token.
+  // Devuelve { organization_id, webhook_token } o null si el workflow no existe.
+  findForWebhook(workflowId) {
+    return db.get('SELECT organization_id, webhook_token FROM workflows WHERE id = ?', [workflowId])
   },
 }
 

@@ -1,7 +1,17 @@
 const express = require('express')
 const router = express.Router()
-const { randomUUID } = require('crypto')
+const { randomUUID, timingSafeEqual } = require('crypto')
 const store = require('../data/store')
+
+// Comparación en tiempo constante. Devuelve false (sin lanzar) si algún valor
+// falta o las longitudes difieren, evitando filtrar el token por timing.
+function tokensIguales(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false
+  const ba = Buffer.from(a)
+  const bb = Buffer.from(b)
+  if (ba.length !== bb.length) return false
+  return timingSafeEqual(ba, bb)
+}
 
 router.post('/execution', async (req, res) => {
   const { workflow_id, estado, duracion_ms, mensaje_error } = req.body
@@ -11,11 +21,17 @@ router.post('/execution', async (req, res) => {
   }
 
   try {
-    // Endpoint público (sin JWT): la organización se DERIVA del workflow,
-    // nunca de un campo del payload de Make.
-    const wf = await store.workflows.organizationIdOf(workflow_id)
+    // Endpoint público (sin JWT): la organización y el token se DERIVAN del
+    // workflow, nunca de campos del payload de Make.
+    const wf = await store.workflows.findForWebhook(workflow_id)
     if (!wf) {
       return res.status(404).json({ error: 'Workflow no encontrado' })
+    }
+
+    // El token llega en el header X-Webhook-Token (Express lo da en minúsculas).
+    const tokenHeader = req.headers['x-webhook-token']
+    if (!tokensIguales(tokenHeader, wf.webhook_token)) {
+      return res.status(401).json({ error: 'No autorizado' })
     }
 
     const id = randomUUID()

@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { randomUUID } = require('crypto')
+const { randomUUID, randomBytes } = require('crypto')
 const store = require('../data/store')
 
 router.get('/', async (req, res) => {
@@ -37,12 +37,14 @@ router.post('/', async (req, res) => {
     const id = randomUUID()
 
     // organization_id se toma SIEMPRE del JWT, nunca del body.
+    // El webhook_token se genera en el backend; nunca viene del request.
     await store.workflows.create(req.user.organization_id, {
       id,
       nombre,
       descripcion: descripcion || '',
       herramientas: JSON.stringify(herramientas || []),
       fecha: ahora,
+      webhookToken: randomBytes(32).toString('hex'),
     })
 
     const workflow = await store.workflows.get(req.user.organization_id, id)

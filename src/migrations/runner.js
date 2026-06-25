@@ -4,6 +4,7 @@ const { db } = require('../database')
 // { id, up(tx) }. Add new migrations here in the order they must run.
 const migrations = [
   require('./001_multi_tenant'),
+  require('./002_webhook_token'),
 ]
 
 // schema_migrations is the bookkeeping table. Identical DDL works in both
